@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PTS株価ランキング | 値上がり・値下がり 各上位30銘柄</title>
+<style>
+:root {
+  --bg: #0a0f1c;
+  --panel: #101830;
+  --panel2: #0d1426;
+  --border: #1e2a48;
+  --text: #dbe4f5;
+  --muted: #7787a5;
+  --accent: #39c5cf;
+  --up: #ff5b6a;
+  --down: #4da3ff;
+  --new: #ffd166;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  min-height: 100vh;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
+header.site {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 20px;
+  padding: 8px 4px 20px;
+}
+header.site h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: .02em; }
+header.site h1 .dot { color: var(--accent); }
+header.site .sub { color: var(--muted); font-size: .85rem; }
+a.srcbtn {
+  margin-left: auto; align-self: center;
+  color: var(--accent); text-decoration: none;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel2); padding: 7px 14px;
+  font-size: .82rem; white-space: nowrap;
+}
+a.srcbtn:hover { border-color: var(--accent); }
+.mkttabs { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.mkttabs button {
+  background: var(--panel2); color: var(--muted);
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 9px 20px; font-size: .9rem; cursor: pointer; font-weight: 600;
+}
+.mkttabs button:hover { color: var(--accent); border-color: var(--accent); }
+.mkttabs button.up.active {
+  background: linear-gradient(135deg, #a8283a, #ff5b6a);
+  color: #1a0405; border-color: transparent;
+}
+.mkttabs button.down.active {
+  background: linear-gradient(135deg, #1d5a9c, #4da3ff);
+  color: #04121a; border-color: transparent;
+}
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+}
+.toolbar label { color: var(--muted); font-size: .82rem; margin-right: 6px; }
+.toolbar select, .toolbar input {
+  background: var(--panel2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; font-size: .9rem; outline: none;
+}
+.toolbar select:focus, .toolbar input:focus { border-color: var(--accent); }
+.toolbar input { width: 220px; }
+.toolbar .spacer { flex: 1; }
+button.refresh {
+  background: linear-gradient(135deg, #1d8f98, #39c5cf);
+  color: #04121a; font-weight: 700; font-size: .9rem;
+  border: none; border-radius: 8px; padding: 9px 18px;
+  cursor: pointer; letter-spacing: .02em;
+}
+button.refresh:hover { filter: brightness(1.12); }
+button.refresh:disabled { opacity: .55; cursor: wait; filter: none; }
+.stat { color: var(--muted); font-size: .82rem; }
+.stat b { color: var(--text); font-weight: 600; }
+.banner {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--panel2); padding: 9px 14px; margin-bottom: 10px;
+  font-size: .84rem; color: var(--muted);
+}
+.banner .live-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); margin-right: 7px;
+  box-shadow: 0 0 6px var(--accent);
+}
+.banner b { color: var(--text); }
+.banner.is-live { border-color: #1d8f98; }
+.banner .err { color: var(--up); }
+.banner .warn { color: var(--new); flex-basis: 100%; }
+.hintRow {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 0 4px 10px;
+}
+.hint { color: var(--muted); font-size: .78rem; flex: 1; }
+button.colsToggle {
+  flex: none;
+  background: var(--panel2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 14px; font-size: .85rem;
+  cursor: pointer; letter-spacing: .02em; white-space: nowrap;
+}
+button.colsToggle:hover { border-color: var(--accent); color: var(--accent); }
+button.colsToggle.active { border-color: var(--accent); color: var(--accent); }
+.tablecard {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; overflow: auto; max-height: 78vh;
+}
+table { border-collapse: collapse; width: 100%; font-size: .855rem; white-space: nowrap; }
+thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: #16223f; color: var(--muted);
+  font-weight: 600; font-size: .78rem;
+  padding: 10px 10px; text-align: right;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none;
+}
+thead th:hover { color: var(--accent); }
+thead th.tl { text-align: left; }
+thead th .arw { color: var(--accent); margin-left: 3px; }
+tbody td {
+  padding: 7px 10px; text-align: right;
+  border-bottom: 1px solid #141d36;
+  font-variant-numeric: tabular-nums;
+}
+tbody td.tl { text-align: left; }
+tbody tr:hover { background: #16223f66; }
+td.up { color: var(--up); }
+td.down { color: var(--down); }
+td.flat { color: var(--muted); }
+td.new { color: var(--new); font-weight: 700; }
+td.code a { color: var(--accent); text-decoration: none; }
+td.code a:hover { text-decoration: underline; }
+td.name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.value-cell { font-weight: 600; }
+footer {
+  margin-top: 18px; color: var(--muted); font-size: .76rem; line-height: 1.7;
+  padding: 0 4px;
+}
+footer a { color: var(--accent); }
+.loading { padding: 48px; text-align: center; color: var(--muted); }
+@media (max-width: 720px) {
+  .toolbar input { width: 100%; }
+  .hintRow { flex-direction: column; }
+  .colsToggle { width: 100%; }
+  table { font-size: .68rem; }
+  thead th { padding: 6px 3px; font-size: .62rem; }
+  tbody td { padding: 5px 3px; }
+  thead th .arw { margin-left: 1px; }
+  td.name { max-width: 70px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <h1>PTS株価ランキング<span class="dot">.</span></h1>
+    <span class="sub">値上がり・値下がり 各上位30銘柄 / 毎営業日深夜更新</span>
+    <a class="srcbtn" href="https://github.com/AL00000000/buffett-code-pts-ranking/archive/refs/heads/main.zip">⬇ ソースコード</a>
+  </header>
+
+  <div class="mkttabs" id="mktTabs"></div>
+
+  <div class="toolbar">
+    <button class="refresh" id="refreshBtn">🔄 最新データを取得</button>
+    <span><label>日付</label><select id="dateSel"></select></span>
+    <input id="q" type="search" placeholder="銘柄名・コードで絞り込み">
+    <span class="spacer"></span>
+    <span class="stat" id="stat"></span>
+  </div>
+
+  <div class="banner" id="banner">読み込み中…</div>
+
+  <div class="hintRow">
+    <div class="hint">列見出しをクリックで並び替え(もう一度クリックで昇順/降順切替)。「変動」= 前回保存分からの順位変動。「最新データを取得」で場中の途中データも表示できます(表示のみ・保存はされません)。既定では変動・前回順位・更新時刻・PER・PBRの列は非表示です。</div>
+    <button class="colsToggle" id="colsToggleBtn">全項目を表示</button>
+  </div>
+
+  <div class="tablecard">
+    <table id="tbl">
+      <thead><tr id="headRow"></tr></thead>
+      <tbody id="body"><tr><td class="loading" colspan="14">読み込み中…</td></tr></tbody>
+    </table>
+  </div>
+
+  <footer>
+    データ取得元: <a href="https://www.buffett-code.com/pts" target="_blank" rel="noopener">バフェット・コード PTSランキング</a> / 株価は数分ディレイ / 売買代金は推計 / 市場休場日は更新されません。<br>
+    本サイトのデータの正確性は保証されません。投資判断はご自身の責任で行ってください。
+  </footer>
+</div>
+
+<script>
+"use strict";
+const SECTIONS = [
+  { key: "gainers", label: "値上がり", cls: "up" },
+  { key: "losers",  label: "値下がり", cls: "down" },
+];
+const COLS = [
+  { key: "rank",        label: "順位",     num: s => s.rank },
+  { key: "move",         label: "変動",     num: s => s.is_new ? Infinity : (s.move_num ?? -Infinity), color: true },
+  { key: "prev_rank",    label: "前回順位", num: s => s.prev_rank === "" ? Infinity : +s.prev_rank },
+  { key: "code",         label: "コード",   num: null, left: true, code: true },
+  { key: "name",         label: "銘柄名",   num: null, left: true, cls: "name tl" },
+  { key: "market",       label: "市場",     num: null, left: true, cls: "tl" },
+  { key: "price",        label: "現在値",   num: s => pnum(s.price) },
+  { key: "price_time",   label: "更新時刻", num: null },
+  { key: "change",       label: "値幅",     num: s => pnum(s.change), color: true },
+  { key: "change_pct",   label: "騰落率",   num: s => pnum(s.change_pct), color: true },
+  { key: "volume",       label: "出来高",   num: s => pnum(s.volume) },
+  { key: "value",        label: "売買代金", num: s => pnum(s.value), cls: "value-cell" },
+  { key: "market_cap",   label: "時価総額", num: s => pnum(s.market_cap) },
+  { key: "per",          label: "PER",      num: s => pnum2(s.per) },
+  { key: "pbr",          label: "PBR",      num: s => pnum2(s.pbr) },
+];
+// 既定では非表示にする列(「全項目を表示」ボタンで表示)
+const HIDDEN_BY_DEFAULT = ["move", "prev_rank", "price_time", "per", "pbr"];
+const HIDDEN_ON_MOBILE = ["market", "market_cap"];
+const isMobile = () => window.matchMedia("(max-width: 720px)").matches;
+let showAllCols = false;
+
+let section = "gainers";   // 表示中のセクションキー
+let payload = null;        // 表示中データ(保存 or ライブ)。{sections: {key: {stocks,...}}}
+let all = [];               // 表示中セクションの銘柄配列
+let allDates = [];          // 保存済み日付(新しい順)
+let sortKey = "rank";
+let sortAsc = true;
+
+// 既知の不具合がある保存データ(日付 -> 説明)
+const DATA_NOTES = {};
+function noteFor(d) { return d && DATA_NOTES[d] ? DATA_NOTES[d] : null; }
+function warnHtml(d, isBase) {
+  const n = noteFor(d);
+  if (!n) return "";
+  return '<span class="warn">⚠ ' + (isBase
+    ? "比較対象(" + d + ")のデータに不具合があります: " + n
+    : "この日のデータには不具合があります: " + n) + "</span>";
+}
+
+// ---- buffett-code live fetch settings ----
+const PROXY = u => "https://corsproxy.io/?url=" + encodeURIComponent(u);
+// _cb: corsproxy.io が前回結果をキャッシュするため、取得毎にURLを変えて回避する(対象サイトは未知のパラメータを無視する)
+const BC_URL = (path, cb) => `https://www.buffett-code.com${path}?_cb=${cb}`;
+const SECTION_PATH = { gainers: "/pts", losers: "/pts/decrease" };
+const ROW_RE = new RegExp(
+  `<tr><td class="u-text-center pts-ranking-table__rank[^"]*">(?<rank>\\d+)<\\/td>` +
+  `<td class="u-text-left[^"]*"><a href="\\/company\\/(?<code>[0-9A-Za-z]+)\\/">(?<name>[^<]*)<\\/a>` +
+  `<span[^>]*>[0-9A-Za-z]+,(?<market>[^<]*)<\\/span><\\/td>` +
+  `<td class="u-text-right[^"]*">(?<price>[^<]*)<span[^>]*>(?<price_time>[^<]*)<\\/span><\\/td>` +
+  `<td class="u-text-right[^"]*">(?<change>[^<]*)<span[^>]*>(?<change_pct>[^<]*)<\\/span><\\/td>` +
+  `<td class="u-text-right[^"]*">(?<volume>[^<]*)<\\/td>` +
+  `<td class="u-text-right[^"]*">(?<value>[^<]*)<\\/td>` +
+  `<td class="u-text-right[^"]*">(?<market_cap>[^<]*)<\\/td>` +
+  `<td class="u-text-right[^"]*">(?<per>[^<]*)<\\/td>` +
+  `<td class="u-text-right[^"]*">(?<pbr>[^<]*)<\\/td><\\/tr>`,
+  "g");
+const AS_OF_RE = /l-mt30">(\d{4})\/(\d{2})\/(\d{2}) (\d{2}:\d{2})[^<]*時点[^<]*<\/div>/;
+const TOP_N = 30;
+
+function pnum(v) {
+  if (v == null || v === "" || v === "－" || v === "-") return -Infinity;
+  const n = parseFloat(String(v).replace(/,/g, "").replace("+", "").replace(/(千円|億円|兆円|倍|%)$/, ""));
+  return isNaN(n) ? -Infinity : n;
+}
+function pnum2(v) { // PER等: 「－」は最後に回す
+  if (v == null || v === "" || v === "－" || v === "-") return Infinity;
+  const n = parseFloat(String(v).replace(/,/g, "").replace(/(千円|億円|兆円|倍|%)$/, ""));
+  return isNaN(n) ? Infinity : n;
+}
+function cls(v) {
+  const s = String(v);
+  if (s.startsWith("+") || s.startsWith("↑")) return "up";
+  if (s.startsWith("-") || s.startsWith("↓")) return "down";
+  if (s === "→") return "flat";
+  if (s === "NEW") return "new";
+  return "";
+}
+
+function buildTabs() {
+  const box = document.getElementById("mktTabs");
+  box.innerHTML = "";
+  for (const sec of SECTIONS) {
+    const b = document.createElement("button");
+    b.textContent = sec.label;
+    b.className = sec.cls;
+    b.classList.toggle("active", sec.key === section);
+    b.onclick = () => { section = sec.key; applySection(); };
+    box.appendChild(b);
+  }
+}
+
+function activeCols() {
+  let cols = COLS;
+  if (!showAllCols) {
+    cols = cols.filter(c => !HIDDEN_BY_DEFAULT.includes(c.key));
+    if (isMobile()) cols = cols.filter(c => !HIDDEN_ON_MOBILE.includes(c.key));
+  }
+  return cols;
+}
+
+function buildHead() {
+  const cols = activeCols();
+  const tr = document.getElementById("headRow");
+  tr.innerHTML = "";
+  for (const c of cols) {
+    const th = document.createElement("th");
+    th.textContent = c.label;
+    if (c.left) th.classList.add("tl");
+    if (c.key === sortKey) {
+      const a = document.createElement("span");
+      a.className = "arw";
+      a.textContent = sortAsc ? "▲" : "▼";
+      th.appendChild(a);
+    }
+    th.onclick = () => {
+      if (sortKey === c.key) { sortAsc = !sortAsc; }
+      else {
+        sortKey = c.key;
+        sortAsc = c.num ? (c.key === "rank" || c.key === "prev_rank") : true;
+      }
+      render();
+    };
+    tr.appendChild(th);
+  }
+}
+
+function render() {
+  const cols = activeCols();
+  if (!cols.some(c => c.key === sortKey)) { sortKey = "rank"; sortAsc = true; }
+  buildHead();
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  let rows = all.filter(s =>
+    (!q || s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)));
+
+  const col = COLS.find(c => c.key === sortKey);
+  rows.sort((a, b) => {
+    if (sortKey === "move") {
+      if (a.is_new !== b.is_new) return a.is_new ? 1 : -1;
+      if (a.is_new) return a.rank - b.rank;
+    }
+    let r;
+    if (col.num) { r = col.num(a) - col.num(b); }
+    else { r = String(a[col.key]).localeCompare(String(b[col.key]), "ja"); }
+    if (r === 0) r = a.rank - b.rank;
+    return sortAsc ? r : -r;
+  });
+
+  const tb = document.getElementById("body");
+  tb.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  for (const s of rows) {
+    const tr = document.createElement("tr");
+    for (const c of cols) {
+      const v = s[c.key];
+      const td = document.createElement("td");
+      const klass = c.code ? "code tl" : (c.cls || (c.color ? cls(v) : ""));
+      if (klass) td.className = c.color && !c.code && !c.cls ? cls(v) : klass;
+      if (c.code) {
+        const a = document.createElement("a");
+        a.href = "https://www.buffett-code.com/company/" + encodeURIComponent(v) + "/";
+        a.target = "_blank"; a.rel = "noopener";
+        a.textContent = v;
+        td.appendChild(a);
+      } else {
+        td.textContent = (v === undefined || v === null || v === "") ? "-" : v;
+      }
+      tr.appendChild(td);
+    }
+    frag.appendChild(tr);
+  }
+  tb.appendChild(frag);
+  document.getElementById("stat").innerHTML =
+    "表示 <b>" + rows.length + "</b> / " + all.length + " 銘柄";
+}
+
+function setBanner(html, live) {
+  const b = document.getElementById("banner");
+  b.innerHTML = html;
+  b.classList.toggle("is-live", !!live);
+}
+
+// 表示中セクションのデータを payload から取り出して描画+バナー更新
+function applySection() {
+  buildTabs();
+  const sec = payload.sections[section] || { stocks: [] };
+  all = sec.stocks;
+  if (payload.live) {
+    setBanner('<span class="live-dot"></span>ライブデータ: <b>' +
+      (sec.as_of ? sec.as_of + " 時点" : "時刻不明") +
+      "</b>(数分ディレイ・保存されません) / 比較対象: <b>" +
+      (payload.baseDate || "なし") + "</b>" + warnHtml(payload.baseDate, true), true);
+  } else {
+    const asof = sec.as_of ? sec.as_of + " 時点" : payload.date;
+    setBanner("保存データ: <b>" + asof + "</b> / 比較対象: <b>" +
+      (payload.prev_date || "なし(初回)") + "</b>" +
+      warnHtml(payload.date, false) + warnHtml(payload.prev_date, true), false);
+  }
+  render();
+}
+
+async function loadDate(d) {
+  const res = await fetch("data/" + d + ".json", { cache: "no-cache" });
+  const raw = await res.json();
+  payload = {
+    live: false, date: raw.date, prev_date: raw.prev_date,
+    sections: Object.fromEntries(SECTIONS.map(sec =>
+      [sec.key, { as_of: (raw.as_of || {})[sec.key], stocks: raw.sections[sec.key] }])),
+  };
+  applySection();
+}
+
+// ---- live refresh ----
+async function fetchLive(path, cb) {
+  const res = await fetch(PROXY(BC_URL(path, cb)), { cache: "no-store" });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return await res.text();
+}
+
+function parseLive(html) {
+  const rows = [];
+  ROW_RE.lastIndex = 0;
+  let m;
+  while ((m = ROW_RE.exec(html)) !== null) {
+    const d = {};
+    for (const [k, v] of Object.entries(m.groups)) d[k] = (v || "").trim();
+    rows.push(d);
+  }
+  return rows.slice(0, TOP_N);
+}
+
+async function refreshLive() {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  const orig = btn.textContent;
+  try {
+    const cb = Date.now();  // 今回の取得共通のキャッシュバスタ
+    let done = 0;
+    btn.textContent = "取得中… 0/" + SECTIONS.length;
+    const htmls = await Promise.all(SECTIONS.map(async sec => {
+      const h = await fetchLive(SECTION_PATH[sec.key], cb);
+      done++;
+      btn.textContent = "取得中… " + done + "/" + SECTIONS.length;
+      return h;
+    }));
+
+    let dataDate = null;
+    const liveSections = {};
+    SECTIONS.forEach((sec, i) => {
+      const html = htmls[i];
+      let asOf = null;
+      const am = html.match(AS_OF_RE);
+      if (am) {
+        const d = am[1] + "-" + am[2] + "-" + am[3];
+        asOf = d + " " + am[4];
+        if (!dataDate) dataDate = d;
+      }
+      const stocks = parseLive(html);
+      if (stocks.length < TOP_N) throw new Error(sec.label + " の行を抽出できませんでした(ページ構造変更の可能性)");
+      stocks.forEach((s, j) => { s.rank = j + 1; });
+      liveSections[sec.key] = { as_of: asOf, stocks };
+    });
+
+    // 比較対象: データ日付より前の直近保存日(セクションごとに同セクションと比較)
+    const baseDate = allDates.find(d => !dataDate || d < dataDate) || null;
+    let baseSections = {};
+    if (baseDate) {
+      const res = await fetch("data/" + baseDate + ".json", { cache: "no-cache" });
+      baseSections = (await res.json()).sections || {};
+    }
+    for (const sec of SECTIONS) {
+      const base = Object.fromEntries(
+        (baseSections[sec.key] || []).map(s => [s.code, s.rank]));
+      for (const s of liveSections[sec.key].stocks) {
+        if (s.code in base) {
+          const diff = base[s.code] - s.rank;
+          s.move = diff > 0 ? "↑" + diff : diff < 0 ? "↓" + (-diff) : "→";
+          s.prev_rank = base[s.code];
+          s.move_num = diff;
+          s.is_new = false;
+        } else {
+          s.move = baseDate ? "NEW" : "";
+          s.prev_rank = "";
+          s.move_num = null;
+          s.is_new = !!baseDate;
+        }
+      }
+    }
+
+    payload = { live: true, baseDate, sections: liveSections };
+    applySection();
+  } catch (e) {
+    setBanner('<span class="err">最新データの取得に失敗しました: ' + e +
+      " / 時間をおいて再試行してください。</span>", false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+async function init() {
+  buildTabs();
+  const res = await fetch("data/index.json", { cache: "no-cache" });
+  const idx = await res.json();
+  allDates = idx.dates;
+  const sel = document.getElementById("dateSel");
+  sel.innerHTML = allDates.map(d => '<option value="' + d + '">' + d + "</option>").join("");
+  sel.onchange = () => loadDate(sel.value);
+  document.getElementById("q").oninput = render;
+  document.getElementById("refreshBtn").onclick = refreshLive;
+  document.getElementById("colsToggleBtn").onclick = e => {
+    showAllCols = !showAllCols;
+    e.target.textContent = showAllCols ? "簡易表示に戻す" : "全項目を表示";
+    e.target.classList.toggle("active", showAllCols);
+    render();
+  };
+  let mobileMatch = isMobile();
+  window.addEventListener("resize", () => {
+    if (isMobile() !== mobileMatch) { mobileMatch = isMobile(); render(); }
+  });
+  if (allDates.length) await loadDate(allDates[0]);
+  else document.getElementById("body").innerHTML = '<tr><td class="loading" colspan="14">データがありません</td></tr>';
+}
+init().catch(e => {
+  document.getElementById("body").innerHTML =
+    '<tr><td class="loading" colspan="14">読み込みエラー: ' + e + "</td></tr>";
+});
+</script>
+</body>
+</html>
