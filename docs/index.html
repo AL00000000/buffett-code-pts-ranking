@@ -69,14 +69,6 @@ a.srcbtn:hover { border-color: var(--accent); }
 .toolbar select:focus, .toolbar input:focus { border-color: var(--accent); }
 .toolbar input { width: 220px; }
 .toolbar .spacer { flex: 1; }
-button.refresh {
-  background: linear-gradient(135deg, #1d8f98, #39c5cf);
-  color: #04121a; font-weight: 700; font-size: .9rem;
-  border: none; border-radius: 8px; padding: 9px 18px;
-  cursor: pointer; letter-spacing: .02em;
-}
-button.refresh:hover { filter: brightness(1.12); }
-button.refresh:disabled { opacity: .55; cursor: wait; filter: none; }
 .stat { color: var(--muted); font-size: .82rem; }
 .stat b { color: var(--text); font-weight: 600; }
 .banner {
@@ -85,14 +77,7 @@ button.refresh:disabled { opacity: .55; cursor: wait; filter: none; }
   background: var(--panel2); padding: 9px 14px; margin-bottom: 10px;
   font-size: .84rem; color: var(--muted);
 }
-.banner .live-dot {
-  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--accent); margin-right: 7px;
-  box-shadow: 0 0 6px var(--accent);
-}
 .banner b { color: var(--text); }
-.banner.is-live { border-color: #1d8f98; }
-.banner .err { color: var(--up); }
 .banner .warn { color: var(--new); flex-basis: 100%; }
 .hintRow {
   display: flex; align-items: flex-start; gap: 14px;
@@ -161,14 +146,13 @@ footer a { color: var(--accent); }
 <div class="wrap">
   <header class="site">
     <h1>PTS株価ランキング<span class="dot">.</span></h1>
-    <span class="sub">値上がり・値下がり 各上位30銘柄 / 毎営業日深夜更新</span>
+    <span class="sub">値上がり・値下がり 各上位30銘柄 / 毎営業日深夜0時時点</span>
     <a class="srcbtn" href="https://github.com/AL00000000/buffett-code-pts-ranking/archive/refs/heads/main.zip">⬇ ソースコード</a>
   </header>
 
   <div class="mkttabs" id="mktTabs"></div>
 
   <div class="toolbar">
-    <button class="refresh" id="refreshBtn">🔄 最新データを取得</button>
     <span><label>日付</label><select id="dateSel"></select></span>
     <input id="q" type="search" placeholder="銘柄名・コードで絞り込み">
     <span class="spacer"></span>
@@ -178,7 +162,7 @@ footer a { color: var(--accent); }
   <div class="banner" id="banner">読み込み中…</div>
 
   <div class="hintRow">
-    <div class="hint">列見出しをクリックで並び替え(もう一度クリックで昇順/降順切替)。「変動」= 前回保存分からの順位変動。「最新データを取得」で場中の途中データも表示できます(表示のみ・保存はされません)。既定では変動・前回順位・更新時刻・PER・PBRの列は非表示です。</div>
+    <div class="hint">列見出しをクリックで並び替え(もう一度クリックで昇順/降順切替)。「変動」= 前回保存分からの順位変動。既定では変動・前回順位・更新時刻・PER・PBRの列は非表示です。</div>
     <button class="colsToggle" id="colsToggleBtn">全項目を表示</button>
   </div>
 
@@ -190,7 +174,7 @@ footer a { color: var(--accent); }
   </div>
 
   <footer>
-    データ取得元: <a href="https://www.buffett-code.com/pts" target="_blank" rel="noopener">バフェット・コード PTSランキング</a> / 株価は数分ディレイ / 売買代金は推計 / 市場休場日は更新されません。<br>
+    データ取得元: <a href="https://www.buffett-code.com/pts" target="_blank" rel="noopener">バフェット・コード PTSランキング</a> / 毎営業日深夜0時時点のスナップショットのみを記録(場中データは保存しません) / 売買代金は推計 / 市場休場日は更新されません。<br>
     本サイトのデータの正確性は保証されません。投資判断はご自身の責任で行ってください。
   </footer>
 </div>
@@ -225,9 +209,9 @@ const isMobile = () => window.matchMedia("(max-width: 720px)").matches;
 let showAllCols = false;
 
 let section = "gainers";   // 表示中のセクションキー
-let payload = null;        // 表示中データ(保存 or ライブ)。{sections: {key: {stocks,...}}}
-let all = [];               // 表示中セクションの銘柄配列
-let allDates = [];          // 保存済み日付(新しい順)
+let payload = null;        // 表示中の保存データ。{date, prev_date, sections: {key: {as_of,stocks}}}
+let all = [];              // 表示中セクションの銘柄配列
+let allDates = [];         // 保存済み日付(新しい順)
 let sortKey = "rank";
 let sortAsc = true;
 
@@ -241,26 +225,6 @@ function warnHtml(d, isBase) {
     ? "比較対象(" + d + ")のデータに不具合があります: " + n
     : "この日のデータには不具合があります: " + n) + "</span>";
 }
-
-// ---- buffett-code live fetch settings ----
-const PROXY = u => "https://corsproxy.io/?url=" + encodeURIComponent(u);
-// _cb: corsproxy.io が前回結果をキャッシュするため、取得毎にURLを変えて回避する(対象サイトは未知のパラメータを無視する)
-const BC_URL = (path, cb) => `https://www.buffett-code.com${path}?_cb=${cb}`;
-const SECTION_PATH = { gainers: "/pts", losers: "/pts/decrease" };
-const ROW_RE = new RegExp(
-  `<tr><td class="u-text-center pts-ranking-table__rank[^"]*">(?<rank>\\d+)<\\/td>` +
-  `<td class="u-text-left[^"]*"><a href="\\/company\\/(?<code>[0-9A-Za-z]+)\\/">(?<name>[^<]*)<\\/a>` +
-  `<span[^>]*>[0-9A-Za-z]+,(?<market>[^<]*)<\\/span><\\/td>` +
-  `<td class="u-text-right[^"]*">(?<price>[^<]*)<span[^>]*>(?<price_time>[^<]*)<\\/span><\\/td>` +
-  `<td class="u-text-right[^"]*">(?<change>[^<]*)<span[^>]*>(?<change_pct>[^<]*)<\\/span><\\/td>` +
-  `<td class="u-text-right[^"]*">(?<volume>[^<]*)<\\/td>` +
-  `<td class="u-text-right[^"]*">(?<value>[^<]*)<\\/td>` +
-  `<td class="u-text-right[^"]*">(?<market_cap>[^<]*)<\\/td>` +
-  `<td class="u-text-right[^"]*">(?<per>[^<]*)<\\/td>` +
-  `<td class="u-text-right[^"]*">(?<pbr>[^<]*)<\\/td><\\/tr>`,
-  "g");
-const AS_OF_RE = /l-mt30">(\d{4})\/(\d{2})\/(\d{2}) (\d{2}:\d{2})[^<]*時点[^<]*<\/div>/;
-const TOP_N = 30;
 
 function pnum(v) {
   if (v == null || v === "" || v === "－" || v === "-") return -Infinity;
@@ -378,10 +342,8 @@ function render() {
     "表示 <b>" + rows.length + "</b> / " + all.length + " 銘柄";
 }
 
-function setBanner(html, live) {
-  const b = document.getElementById("banner");
-  b.innerHTML = html;
-  b.classList.toggle("is-live", !!live);
+function setBanner(html) {
+  document.getElementById("banner").innerHTML = html;
 }
 
 // 表示中セクションのデータを payload から取り出して描画+バナー更新
@@ -389,17 +351,10 @@ function applySection() {
   buildTabs();
   const sec = payload.sections[section] || { stocks: [] };
   all = sec.stocks;
-  if (payload.live) {
-    setBanner('<span class="live-dot"></span>ライブデータ: <b>' +
-      (sec.as_of ? sec.as_of + " 時点" : "時刻不明") +
-      "</b>(数分ディレイ・保存されません) / 比較対象: <b>" +
-      (payload.baseDate || "なし") + "</b>" + warnHtml(payload.baseDate, true), true);
-  } else {
-    const asof = sec.as_of ? sec.as_of + " 時点" : payload.date;
-    setBanner("保存データ: <b>" + asof + "</b> / 比較対象: <b>" +
-      (payload.prev_date || "なし(初回)") + "</b>" +
-      warnHtml(payload.date, false) + warnHtml(payload.prev_date, true), false);
-  }
+  const asof = sec.as_of ? sec.as_of + " 時点" : payload.date;
+  setBanner("保存データ: <b>" + asof + "</b> / 比較対象: <b>" +
+    (payload.prev_date || "なし(初回)") + "</b>" +
+    warnHtml(payload.date, false) + warnHtml(payload.prev_date, true));
   render();
 }
 
@@ -407,99 +362,11 @@ async function loadDate(d) {
   const res = await fetch("data/" + d + ".json", { cache: "no-cache" });
   const raw = await res.json();
   payload = {
-    live: false, date: raw.date, prev_date: raw.prev_date,
+    date: raw.date, prev_date: raw.prev_date,
     sections: Object.fromEntries(SECTIONS.map(sec =>
       [sec.key, { as_of: (raw.as_of || {})[sec.key], stocks: raw.sections[sec.key] }])),
   };
   applySection();
-}
-
-// ---- live refresh ----
-async function fetchLive(path, cb) {
-  const res = await fetch(PROXY(BC_URL(path, cb)), { cache: "no-store" });
-  if (!res.ok) throw new Error("HTTP " + res.status);
-  return await res.text();
-}
-
-function parseLive(html) {
-  const rows = [];
-  ROW_RE.lastIndex = 0;
-  let m;
-  while ((m = ROW_RE.exec(html)) !== null) {
-    const d = {};
-    for (const [k, v] of Object.entries(m.groups)) d[k] = (v || "").trim();
-    rows.push(d);
-  }
-  return rows.slice(0, TOP_N);
-}
-
-async function refreshLive() {
-  const btn = document.getElementById("refreshBtn");
-  btn.disabled = true;
-  const orig = btn.textContent;
-  try {
-    const cb = Date.now();  // 今回の取得共通のキャッシュバスタ
-    let done = 0;
-    btn.textContent = "取得中… 0/" + SECTIONS.length;
-    const htmls = await Promise.all(SECTIONS.map(async sec => {
-      const h = await fetchLive(SECTION_PATH[sec.key], cb);
-      done++;
-      btn.textContent = "取得中… " + done + "/" + SECTIONS.length;
-      return h;
-    }));
-
-    let dataDate = null;
-    const liveSections = {};
-    SECTIONS.forEach((sec, i) => {
-      const html = htmls[i];
-      let asOf = null;
-      const am = html.match(AS_OF_RE);
-      if (am) {
-        const d = am[1] + "-" + am[2] + "-" + am[3];
-        asOf = d + " " + am[4];
-        if (!dataDate) dataDate = d;
-      }
-      const stocks = parseLive(html);
-      if (stocks.length < TOP_N) throw new Error(sec.label + " の行を抽出できませんでした(ページ構造変更の可能性)");
-      stocks.forEach((s, j) => { s.rank = j + 1; });
-      liveSections[sec.key] = { as_of: asOf, stocks };
-    });
-
-    // 比較対象: データ日付より前の直近保存日(セクションごとに同セクションと比較)
-    const baseDate = allDates.find(d => !dataDate || d < dataDate) || null;
-    let baseSections = {};
-    if (baseDate) {
-      const res = await fetch("data/" + baseDate + ".json", { cache: "no-cache" });
-      baseSections = (await res.json()).sections || {};
-    }
-    for (const sec of SECTIONS) {
-      const base = Object.fromEntries(
-        (baseSections[sec.key] || []).map(s => [s.code, s.rank]));
-      for (const s of liveSections[sec.key].stocks) {
-        if (s.code in base) {
-          const diff = base[s.code] - s.rank;
-          s.move = diff > 0 ? "↑" + diff : diff < 0 ? "↓" + (-diff) : "→";
-          s.prev_rank = base[s.code];
-          s.move_num = diff;
-          s.is_new = false;
-        } else {
-          s.move = baseDate ? "NEW" : "";
-          s.prev_rank = "";
-          s.move_num = null;
-          s.is_new = !!baseDate;
-        }
-      }
-    }
-
-    payload = { live: true, baseDate, sections: liveSections };
-    applySection();
-  } catch (e) {
-    setBanner('<span class="err">最新データの取得に失敗しました: ' + e +
-      " / 時間をおいて再試行してください。</span>", false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = orig;
-  }
 }
 
 async function init() {
@@ -511,7 +378,6 @@ async function init() {
   sel.innerHTML = allDates.map(d => '<option value="' + d + '">' + d + "</option>").join("");
   sel.onchange = () => loadDate(sel.value);
   document.getElementById("q").oninput = render;
-  document.getElementById("refreshBtn").onclick = refreshLive;
   document.getElementById("colsToggleBtn").onclick = e => {
     showAllCols = !showAllCols;
     e.target.textContent = showAllCols ? "簡易表示に戻す" : "全項目を表示";
