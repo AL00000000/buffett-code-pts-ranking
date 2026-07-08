@@ -95,7 +95,7 @@ def load_prev(section: str, today: str):
     prev_date = files[-1].stem
     data = json.loads(files[-1].read_text(encoding="utf-8"))
     stocks = data.get(section, [])
-    return prev_date, {s["code"]: s["rank"] for s in stocks}
+    return prev_date, {s["code"]: int(s["rank"]) for s in stocks}
 
 
 def apply_rank_change(stocks, prev_map, has_prev: bool):
