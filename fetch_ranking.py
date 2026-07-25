@@ -14,7 +14,7 @@ import re
 import sys
 import time
 import urllib.request
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 BASE = Path(__file__).parent
@@ -118,11 +118,36 @@ def apply_rank_change(stocks, prev_map, has_prev: bool):
             s["move_num"] = None
 
 
+def load_holidays():
+    """東証の非営業日。マスターは kabutan-ranking/docs/holidays.json（要同期）。"""
+    p = BASE / "holidays.json"
+    try:
+        dates = json.loads(p.read_text(encoding="utf-8")).get("dates")
+    except (OSError, ValueError):
+        return None
+    return set(dates) if dates else None
+
+
 def main():
     today = date.today().isoformat()
     HISTORY.mkdir(exist_ok=True)
     OUTPUT.mkdir(exist_ok=True)
     DOCS_DATA.mkdir(parents=True, exist_ok=True)
+
+    # PTSは前営業日夜のセッションを翌0時に取得するので、保存日 = セッション日 + 1。
+    # 前日が非営業日ならセッション自体が存在せず、サイトには前回の気配が
+    # 残っているだけなので保存しない（取得前に判定してリクエストも節約する）。
+    # 気配時刻での判定は不可: 休場日でもサイトは当日付の時刻を返してくる。
+    holidays = load_holidays()
+    if holidays is None:
+        print("WARN: holidays.json を読めないためセッション有無を判定しません",
+              file=sys.stderr)
+    else:
+        session = date.fromisoformat(today) - timedelta(days=1)
+        if session.weekday() >= 5 or session.isoformat() in holidays:
+            print(f"skip: 前日 {session} は非営業日でPTSセッションが無い"
+                  f"(実行日 {today})")
+            return
 
     result = {}
     as_of_map = {}
@@ -135,8 +160,8 @@ def main():
                   f"(取得件数: {len(rows)}, ページ構造の変更の可能性)", file=sys.stderr)
             sys.exit(1)
         rows = rows[:TOP_N]
-        prev_date, prev_map = load_prev(section, today)
-        apply_rank_change(rows, prev_map, bool(prev_map) or prev_date is not None)
+        sec_prev_date, prev_map = load_prev(section, today)
+        apply_rank_change(rows, prev_map, bool(prev_map) or sec_prev_date is not None)
         result[section] = rows
         as_of_map[section] = as_of
         time.sleep(1.5)
