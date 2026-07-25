@@ -55,6 +55,10 @@ a.srcbtn:hover { border-color: var(--accent); }
   background: linear-gradient(135deg, #1d5a9c, #4da3ff);
   color: #04121a; border-color: transparent;
 }
+.mkttabs button.nd.active {
+  background: linear-gradient(135deg, #17706f, #39c5cf);
+  color: #03151a; border-color: transparent;
+}
 .toolbar {
   display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
   background: var(--panel); border: 1px solid var(--border);
@@ -79,6 +83,47 @@ a.srcbtn:hover { border-color: var(--accent); }
 }
 .banner b { color: var(--text); }
 .banner .warn { color: var(--new); flex-basis: 100%; }
+.banner .win { color: var(--up); font-weight: 700; }
+.banner .warnq { color: var(--new); }
+.explain {
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: 10px; background: var(--panel2);
+  padding: 11px 15px; margin-bottom: 10px;
+  font-size: .8rem; color: var(--muted); line-height: 1.75;
+}
+.explain b { color: var(--text); }
+.explain .k { color: var(--accent); }
+.statcard {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 13px 16px 15px; margin-bottom: 10px;
+  overflow-x: auto;
+}
+.statcard h2 {
+  font-size: .84rem; font-weight: 700; color: var(--text);
+  margin-bottom: 3px; letter-spacing: .02em;
+}
+.statcard .cap { font-size: .75rem; color: var(--muted); margin-bottom: 11px; }
+.statcard table { width: 100%; font-size: .82rem; }
+.statcard th, .statcard td {
+  padding: 7px 12px; text-align: right; white-space: nowrap;
+  border-bottom: 1px solid #141d36;
+}
+.statcard thead th {
+  position: static; background: none; color: var(--muted);
+  font-size: .74rem; font-weight: 600; cursor: default;
+}
+.statcard thead th:hover { color: var(--muted); }
+.statcard th.tl, .statcard td.tl { text-align: left; }
+.statcard tbody tr:last-child th, .statcard tbody tr:last-child td { border-bottom: none; }
+.statcard tbody th {
+  font-weight: 600; color: var(--text); text-align: left;
+  background: none; position: static; font-size: .82rem; cursor: default;
+}
+.statcard tbody th small { display: block; color: var(--muted); font-weight: 400; font-size: .7rem; }
+.statcard td { font-variant-numeric: tabular-nums; }
+.statcard td .yen { color: var(--muted); font-size: .74rem; margin-left: 4px; }
+.statcard tr.key th, .statcard tr.key td { background: #16223f55; }
+.statcard .share { font-weight: 700; }
 .hintRow {
   display: flex; align-items: flex-start; gap: 14px;
   padding: 0 4px 10px;
@@ -124,6 +169,13 @@ td.code a { color: var(--accent); text-decoration: none; }
 td.code a:hover { text-decoration: underline; }
 td.name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .value-cell { font-weight: 600; }
+td.hilite { font-weight: 700; }
+.badge {
+  display: inline-block; border-radius: 5px; padding: 1px 7px;
+  font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+}
+.badge.tai { background: #17706f33; color: var(--accent); border: 1px solid #17706f; }
+.badge.sin { background: #7787a522; color: var(--muted); border: 1px solid var(--border); }
 footer {
   margin-top: 18px; color: var(--muted); font-size: .76rem; line-height: 1.7;
   padding: 0 4px;
@@ -134,6 +186,7 @@ footer a { color: var(--accent); }
   .toolbar input { width: 100%; }
   .hintRow { flex-direction: column; }
   .colsToggle { width: 100%; }
+  .mkttabs button { padding: 8px 12px; font-size: .78rem; }
   table { font-size: .68rem; }
   thead th { padding: 6px 3px; font-size: .62rem; }
   tbody td { padding: 5px 3px; }
@@ -154,68 +207,118 @@ footer a { color: var(--accent); }
 
   <div class="toolbar">
     <span><label>日付</label><select id="dateSel"></select></span>
+    <span id="secFilterBox" style="display:none"><label>区分</label><select id="secFilter">
+      <option value="">両方</option>
+      <option value="gainers">値上がり</option>
+      <option value="losers">値下がり</option>
+    </select></span>
     <input id="q" type="search" placeholder="銘柄名・コードで絞り込み">
     <span class="spacer"></span>
     <span class="stat" id="stat"></span>
   </div>
 
+  <div class="explain" id="explain" style="display:none"></div>
+
   <div class="banner" id="banner">読み込み中…</div>
 
+  <div class="statcard" id="ndStats" style="display:none"></div>
+
   <div class="hintRow">
-    <div class="hint">列見出しをクリックで並び替え(もう一度クリックで昇順/降順切替)。「変動」= 前回保存分からの順位変動。既定では変動・前回順位・更新時刻・PER・PBRの列は非表示です。</div>
+    <div class="hint" id="hint"></div>
     <button class="colsToggle" id="colsToggleBtn">全項目を表示</button>
   </div>
 
   <div class="tablecard">
     <table id="tbl">
       <thead><tr id="headRow"></tr></thead>
-      <tbody id="body"><tr><td class="loading" colspan="14">読み込み中…</td></tr></tbody>
+      <tbody id="body"><tr><td class="loading" colspan="20">読み込み中…</td></tr></tbody>
     </table>
   </div>
 
   <footer>
-    データ取得元: <a href="https://www.buffett-code.com/pts" target="_blank" rel="noopener">バフェット・コード PTSランキング</a> / 毎営業日深夜0時時点のスナップショットのみを記録(場中データは保存しません) / 売買代金は推計 / 市場休場日は更新されません。<br>
+    データ取得元: <a href="https://www.buffett-code.com/pts" target="_blank" rel="noopener">バフェット・コード PTSランキング</a>(PTS) /
+    <a href="https://kabutan.jp/" target="_blank" rel="noopener">株探</a>(翌営業日の4本値・信用区分) /
+    毎営業日深夜0時時点のスナップショットのみを記録(場中データは保存しません) / 売買代金は推計 / 市場休場日は更新されません。<br>
     本サイトのデータの正確性は保証されません。投資判断はご自身の責任で行ってください。
   </footer>
 </div>
 
 <script>
 "use strict";
-const SECTIONS = [
-  { key: "gainers", label: "値上がり", cls: "up" },
-  { key: "losers",  label: "値下がり", cls: "down" },
+
+/* ── ビュー定義 ───────────────────────────────────────────
+   kind:"rank"    … 従来のPTSランキング表(値上がり/値下がり)
+   kind:"nextday" … PTS価格と翌営業日の場中4本値を突き合わせる表        */
+const VIEWS = [
+  { key: "gainers", label: "値上がり", cls: "up",   kind: "rank", sec: "gainers" },
+  { key: "losers",  label: "値下がり", cls: "down", kind: "rank", sec: "losers"  },
+  { key: "nd_all",  label: "翌日最高値との差",           cls: "nd", kind: "nextday", marginOnly: false },
+  { key: "nd_tai",  label: "翌日最高値との差(貸借のみ)", cls: "nd", kind: "nextday", marginOnly: true  },
 ];
+
 const COLS = [
   { key: "rank",        label: "順位",     num: s => s.rank },
-  { key: "move",         label: "変動",     num: s => s.is_new ? Infinity : (s.move_num ?? -Infinity), color: true },
-  { key: "prev_rank",    label: "前回順位", num: s => s.prev_rank === "" ? Infinity : +s.prev_rank },
-  { key: "code",         label: "コード",   num: null, left: true, code: true },
-  { key: "name",         label: "銘柄名",   num: null, left: true, cls: "name tl" },
-  { key: "market",       label: "市場",     num: null, left: true, cls: "tl" },
-  { key: "price",        label: "現在値",   num: s => pnum(s.price) },
-  { key: "price_time",   label: "更新時刻", num: null },
-  { key: "change",       label: "値幅",     num: s => pnum(s.change), color: true },
-  { key: "change_pct",   label: "騰落率",   num: s => pnum(s.change_pct), color: true },
-  { key: "volume",       label: "出来高",   num: s => pnum(s.volume) },
-  { key: "value",        label: "売買代金", num: s => pnum(s.value), cls: "value-cell" },
-  { key: "market_cap",   label: "時価総額", num: s => pnum(s.market_cap) },
-  { key: "per",          label: "PER",      num: s => pnum2(s.per) },
-  { key: "pbr",          label: "PBR",      num: s => pnum2(s.pbr) },
+  { key: "move",        label: "変動",     num: s => s.is_new ? Infinity : (s.move_num ?? -Infinity), color: true },
+  { key: "prev_rank",   label: "前回順位", num: s => s.prev_rank === "" ? Infinity : +s.prev_rank },
+  { key: "code",        label: "コード",   num: null, left: true, code: true },
+  { key: "name",        label: "銘柄名",   num: null, left: true, cls: "name tl" },
+  { key: "market",      label: "市場",     num: null, left: true, cls: "tl" },
+  { key: "price",       label: "現在値",   num: s => pnum(s.price) },
+  { key: "price_time",  label: "更新時刻", num: null },
+  { key: "change",      label: "値幅",     num: s => pnum(s.change), color: true },
+  { key: "change_pct",  label: "騰落率",   num: s => pnum(s.change_pct), color: true },
+  { key: "volume",      label: "出来高",   num: s => pnum(s.volume) },
+  { key: "value",       label: "売買代金", num: s => pnum(s.value), cls: "value-cell" },
+  { key: "market_cap",  label: "時価総額", num: s => pnum(s.market_cap) },
+  { key: "per",         label: "PER",      num: s => pnum2(s.per) },
+  { key: "pbr",         label: "PBR",      num: s => pnum2(s.pbr) },
 ];
-// 既定では非表示にする列(「全項目を表示」ボタンで表示)
 const HIDDEN_BY_DEFAULT = ["move", "prev_rank", "price_time", "per", "pbr"];
 const HIDDEN_ON_MOBILE = ["market", "market_cap"];
+
+/* 翌日比較タブの列。差はすべて「PTS価格 −(翌日の値)」で、
+   プラス = PTSのほうが高かった = 夜に売って翌日買い戻すと有利。          */
+const ND_COLS = [
+  { key: "baseLabel", label: "PTSの夜",   num: null, left: true, onlyAll: true },
+  { key: "secLabel",  label: "区分",      num: null, left: true, cls: "tl" },
+  { key: "rank",      label: "順位",      num: s => s.rank },
+  { key: "code",      label: "コード",    num: null, left: true, code: true },
+  { key: "name",      label: "銘柄名",    num: null, left: true, cls: "name tl" },
+  { key: "market",    label: "市場",      num: null, left: true, cls: "tl" },
+  { key: "kubun",     label: "信用区分",  num: null, left: true, badge: true },
+  { key: "pts",       label: "PTS価格",   num: s => nv(s.pts), fmt: v => fnum(v, 1) },
+  { key: "pts_pct",   label: "PTS騰落率", num: s => nv(s.pts_pct), fmt: v => fsign(v, 1) + "%", color: true },
+  { key: "o",         label: "翌日始値",  num: s => nv(s.o), fmt: v => fnum(v, 1) },
+  { key: "h",         label: "翌日高値",  num: s => nv(s.h), fmt: v => fnum(v, 1) },
+  { key: "l",         label: "翌日安値",  num: s => nv(s.l), fmt: v => fnum(v, 1) },
+  { key: "c",         label: "翌日終値",  num: s => nv(s.c), fmt: v => fnum(v, 1) },
+  { key: "dh",        label: "高値との差",   num: s => nv(s.dh),  fmt: v => fsign(v, 1),        color: true, cls2: "hilite" },
+  { key: "dhp",       label: "高値との差%",  num: s => nv(s.dhp), fmt: v => fsign(v, 2) + "%",  color: true, cls2: "hilite" },
+  { key: "dop",       label: "始値との差%",  num: s => nv(s.dop), fmt: v => fsign(v, 2) + "%",  color: true },
+  { key: "dcp",       label: "終値との差%",  num: s => nv(s.dcp), fmt: v => fsign(v, 2) + "%",  color: true },
+  { key: "dlp",       label: "安値との差%",  num: s => nv(s.dlp), fmt: v => fsign(v, 2) + "%",  color: true },
+];
+const ND_HIDDEN_BY_DEFAULT = ["market", "o", "l", "dop", "dlp"];
+const ND_HIDDEN_ON_MOBILE = ["pts_pct", "c"];
+
+const ALL_DATES_KEY = "__all__";
 const isMobile = () => window.matchMedia("(max-width: 720px)").matches;
 let showAllCols = false;
 
-let section = "gainers";   // 表示中のセクションキー
-let payload = null;        // 表示中の保存データ。{date, prev_date, sections: {key: {as_of,stocks}}}
-let all = [];              // 表示中セクションの銘柄配列
-let allDates = [];         // 保存済み日付(新しい順)
+let viewKey = "gainers";
+let payload = null;        // ランキングタブの表示中データ
+let all = [];              // 表示中の行配列
+let allDates = [];         // ランキングの保存日付(新しい順)
+let ndData = null;         // nextday.json(遅延読み込み)
+let ndDates = [];          // 翌日比較データがある日付(新しい順)
+let ndDate = ALL_DATES_KEY;
+let rankDate = null;
 let sortKey = "rank";
 let sortAsc = true;
 
-// 既知の不具合がある保存データ(日付 -> 説明)
+const view = () => VIEWS.find(v => v.key === viewKey);
+const isND = () => view().kind === "nextday";
+
 const DATA_NOTES = {};
 function noteFor(d) { return d && DATA_NOTES[d] ? DATA_NOTES[d] : null; }
 function warnHtml(d, isBase) {
@@ -236,33 +339,51 @@ function pnum2(v) { // PER等: 「－」は最後に回す
   const n = parseFloat(String(v).replace(/,/g, "").replace(/(千円|億円|兆円|倍|%)$/, ""));
   return isNaN(n) ? Infinity : n;
 }
+function nv(v) { return (v == null || isNaN(v)) ? -Infinity : v; }   // 欠測は末尾へ
+function fnum(v, d) {
+  if (v == null || isNaN(v)) return "-";
+  return v.toLocaleString("ja-JP", { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+function fsign(v, d) {
+  if (v == null || isNaN(v)) return "-";
+  return (v > 0 ? "+" : v < 0 ? "" : "±") + fnum(v, d);
+}
 function cls(v) {
   const s = String(v);
+  if (s === "-" || s === "－" || s === "") return "";   // 欠測。マイナス扱いにしない
   if (s.startsWith("+") || s.startsWith("↑")) return "up";
   if (s.startsWith("-") || s.startsWith("↓")) return "down";
-  if (s === "→") return "flat";
+  if (s === "→" || s.startsWith("±")) return "flat";
   if (s === "NEW") return "new";
   return "";
+}
+function median(a) {
+  if (!a.length) return null;
+  const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
 function buildTabs() {
   const box = document.getElementById("mktTabs");
   box.innerHTML = "";
-  for (const sec of SECTIONS) {
+  for (const v of VIEWS) {
     const b = document.createElement("button");
-    b.textContent = sec.label;
-    b.className = sec.cls;
-    b.classList.toggle("active", sec.key === section);
-    b.onclick = () => { section = sec.key; applySection(); };
+    b.textContent = v.label;
+    b.className = v.cls;
+    b.classList.toggle("active", v.key === viewKey);
+    b.onclick = () => switchView(v.key);
     box.appendChild(b);
   }
 }
 
 function activeCols() {
-  let cols = COLS;
+  const base = isND() ? ND_COLS : COLS;
+  const hidden = isND() ? ND_HIDDEN_BY_DEFAULT : HIDDEN_BY_DEFAULT;
+  const hiddenM = isND() ? ND_HIDDEN_ON_MOBILE : HIDDEN_ON_MOBILE;
+  let cols = base.filter(c => !c.onlyAll || (isND() && ndDate === ALL_DATES_KEY));
   if (!showAllCols) {
-    cols = cols.filter(c => !HIDDEN_BY_DEFAULT.includes(c.key));
-    if (isMobile()) cols = cols.filter(c => !HIDDEN_ON_MOBILE.includes(c.key));
+    cols = cols.filter(c => !hidden.includes(c.key));
+    if (isMobile()) cols = cols.filter(c => !hiddenM.includes(c.key));
   }
   return cols;
 }
@@ -293,15 +414,24 @@ function buildHead() {
   }
 }
 
+function visibleRows() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const secF = document.getElementById("secFilter").value;
+  return all.filter(s =>
+    (!q || s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)) &&
+    (!isND() || !secF || s.sec === secF));
+}
+
 function render() {
   const cols = activeCols();
-  if (!cols.some(c => c.key === sortKey)) { sortKey = "rank"; sortAsc = true; }
+  if (!cols.some(c => c.key === sortKey)) {
+    sortKey = isND() ? "dhp" : "rank";
+    sortAsc = !isND();
+  }
   buildHead();
-  const q = document.getElementById("q").value.trim().toLowerCase();
-  let rows = all.filter(s =>
-    (!q || s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)));
+  let rows = visibleRows();
 
-  const col = COLS.find(c => c.key === sortKey);
+  const col = (isND() ? ND_COLS : COLS).find(c => c.key === sortKey);
   rows.sort((a, b) => {
     if (sortKey === "move") {
       if (a.is_new !== b.is_new) return a.is_new ? 1 : -1;
@@ -309,7 +439,7 @@ function render() {
     }
     let r;
     if (col.num) { r = col.num(a) - col.num(b); }
-    else { r = String(a[col.key]).localeCompare(String(b[col.key]), "ja"); }
+    else { r = String(a[col.key] ?? "").localeCompare(String(b[col.key] ?? ""), "ja"); }
     if (r === 0) r = a.rank - b.rank;
     return sortAsc ? r : -r;
   });
@@ -320,53 +450,242 @@ function render() {
   for (const s of rows) {
     const tr = document.createElement("tr");
     for (const c of cols) {
-      const v = s[c.key];
+      const raw = s[c.key];
+      const text = c.fmt ? c.fmt(raw) : ((raw === undefined || raw === null || raw === "") ? "-" : String(raw));
       const td = document.createElement("td");
-      const klass = c.code ? "code tl" : (c.cls || (c.color ? cls(v) : ""));
-      if (klass) td.className = c.color && !c.code && !c.cls ? cls(v) : klass;
       if (c.code) {
+        td.className = "code tl";
         const a = document.createElement("a");
-        a.href = "https://www.buffett-code.com/company/" + encodeURIComponent(v) + "/";
+        a.href = "https://www.buffett-code.com/company/" + encodeURIComponent(raw) + "/";
         a.target = "_blank"; a.rel = "noopener";
-        a.textContent = v;
+        a.textContent = raw;
         td.appendChild(a);
+      } else if (c.badge) {
+        td.className = "tl";
+        if (raw) {
+          const sp = document.createElement("span");
+          sp.className = "badge " + (raw === "貸借" ? "tai" : "sin");
+          sp.textContent = raw;
+          td.appendChild(sp);
+        } else { td.textContent = "対象外"; td.classList.add("flat"); }
       } else {
-        td.textContent = (v === undefined || v === null || v === "") ? "-" : v;
+        td.textContent = text;
+        const klass = [c.cls || "", c.color ? cls(text) : "", c.cls2 || ""].filter(Boolean).join(" ");
+        if (klass) td.className = klass;
       }
       tr.appendChild(td);
     }
     frag.appendChild(tr);
   }
   tb.appendChild(frag);
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td class="loading" colspan="20">該当する銘柄がありません</td></tr>';
+  }
   document.getElementById("stat").innerHTML =
     "表示 <b>" + rows.length + "</b> / " + all.length + " 銘柄";
+  document.getElementById("ndStats").style.display = isND() ? "" : "none";
+  if (isND()) { setNdBanner(rows); renderNdStats(rows); }
 }
 
-function setBanner(html) {
-  document.getElementById("banner").innerHTML = html;
+function setBanner(html) { document.getElementById("banner").innerHTML = html; }
+
+/* ── 翌日比較タブ ───────────────────────────────────────── */
+
+function ndRowsFor(dateKey, marginOnly) {
+  const src = dateKey === ALL_DATES_KEY
+    ? ndData.dates
+    : ndData.dates.filter(d => d.base_date === dateKey);
+  const out = [];
+  for (const d of src) {
+    for (const r of d.rows) {
+      if (marginOnly && r.kubun !== "貸借") continue;
+      const o = { ...r, next_date: d.next_date, base_date: d.base_date };
+      o.baseLabel = d.base_date.slice(5) + "夜→" + d.next_date.slice(5);
+      o.secLabel = r.sec === "gainers" ? "値上がり" : "値下がり";
+      // 差はすべて「PTS価格 − 翌日の値」。プラス = PTSのほうが高い。
+      const p = r.pts;
+      for (const [k, v] of [["h", r.h], ["o", r.o], ["c", r.c], ["l", r.l]]) {
+        const ok = p != null && v != null;
+        o["d" + k] = ok ? +(p - v).toFixed(2) : null;              // 円
+        o["d" + k + "p"] = ok ? +((p - v) / p * 100).toFixed(3) : null;  // %
+      }
+      out.push(o);
+    }
+  }
+  return out;
 }
 
-// 表示中セクションのデータを payload から取り出して描画+バナー更新
-function applySection() {
+function setNdBanner(rows) {
+  const valid = rows.filter(r => r.dhp != null);
+  const parts = [];
+  if (ndDate === ALL_DATES_KEY) {
+    parts.push("集計対象: <b>全" + ndDates.length + "夜</b>");
+  } else {
+    const d = ndData.dates.find(x => x.base_date === ndDate);
+    parts.push("PTS: <b>" + ndDate + "の夜</b>(時点 " + (d ? d.as_of : "?") +
+      (d && d.quality === "mid" ? " / <span class=\"warnq\">PTS取引中に取得</span>" : "") + ")");
+    parts.push("買い戻し: <b>" + (d ? d.next_date : "?") + "</b>の場中");
+  }
+  if (valid.length) {
+    const wins = valid.filter(r => r.dh > 0).length;
+    const dhps = valid.map(r => r.dhp);
+    const dcps = valid.filter(r => r.dcp != null).map(r => r.dcp);
+    parts.push("有効 <b>" + valid.length + "</b>銘柄");
+    parts.push('PTS &gt; 翌日高値: <span class="win">' + wins + "銘柄(" +
+      (wins / valid.length * 100).toFixed(1) + "%)</span>");
+    parts.push("高値との差 平均 <b>" + fsign(dhps.reduce((a, b) => a + b, 0) / dhps.length, 2) +
+      "%</b> / 中央値 <b>" + fsign(median(dhps), 2) + "%</b>");
+    if (dcps.length) {
+      parts.push("終値との差 平均 <b>" +
+        fsign(dcps.reduce((a, b) => a + b, 0) / dcps.length, 2) + "%</b>");
+    }
+  } else {
+    parts.push("<b>翌営業日のデータがまだありません</b>");
+  }
+  setBanner(parts.join(" / "));
+}
+
+/* 買い戻すタイミング別の集計。上2つが「PTS > 翌日高値 / 翌日終値」。 */
+const ND_STATS = [
+  { pct: "dhp", label: "翌日高値", note: "いちばん不利な値段で買い戻した場合", key: true },
+  { pct: "dcp", label: "翌日終値", note: "引けで買い戻した場合", key: true },
+  { pct: "dop", label: "翌日始値", note: "寄付で買い戻した場合" },
+  { pct: "dlp", label: "翌日安値", note: "いちばん有利な値段で買い戻した場合" },
+];
+
+function renderNdStats(rows) {
+  const box = document.getElementById("ndStats");
+  const body = ND_STATS.map(st => {
+    const v = rows.filter(r => r[st.pct] != null);
+    if (!v.length) {
+      return '<tr' + (st.key ? ' class="key"' : "") + "><th>" + st.label +
+        "<small>" + st.note + "</small></th>" +
+        '<td colspan="3" class="flat">データなし</td></tr>';
+    }
+    // 円建ての平均は値がさ株に引きずられて%と符号が食い違うため、率だけを載せる
+    const pcts = v.map(r => r[st.pct]);
+    const wins = v.filter(r => r[st.pct] > 0).length;
+    const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+    const cell = p => '<td class="' + cls(fsign(p, 2)) + '">' + fsign(p, 2) + "%</td>";
+    return '<tr' + (st.key ? ' class="key"' : "") + "><th>" + st.label +
+      "<small>" + st.note + "</small></th>" +
+      '<td class="share ' + (wins * 2 >= v.length ? "up" : "down") + '">' +
+      (wins / v.length * 100).toFixed(1) + "%" +
+      '<span class="yen">' + wins + "/" + v.length + "銘柄</span></td>" +
+      cell(mean(pcts)) + cell(median(pcts)) + "</tr>";
+  }).join("");
+
+  box.innerHTML =
+    "<h2>PTS価格と翌日の値段の比較</h2>" +
+    '<div class="cap">' +
+    (view().marginOnly ? "貸借銘柄のみ" : "全銘柄") + " / " +
+    (ndDate === ALL_DATES_KEY ? "全期間(" + ndDates.length + "夜)" : ndDate + "の夜") +
+    " / 対象 " + rows.length + "銘柄。" +
+    "差は「PTS価格 − 翌日の値」で、プラスならPTSのほうが高かったことを示します。" +
+    "</div>" +
+    "<table><thead><tr><th class=\"tl\">比較対象</th>" +
+    "<th>PTSのほうが高かった割合</th><th>差の平均</th><th>差の中央値</th>" +
+    "</tr></thead><tbody>" + body + "</tbody></table>";
+}
+
+async function ensureNdData() {
+  if (ndData) return;
+  const res = await fetch("data/nextday.json", { cache: "no-cache" });
+  if (!res.ok) throw new Error("data/nextday.json がまだ作られていません");
+  ndData = await res.json();
+  ndData.dates.sort((a, b) => b.base_date.localeCompare(a.base_date));
+  ndDates = ndData.dates.map(d => d.base_date);
+}
+
+/* ── 表示切替 ───────────────────────────────────────────── */
+
+function fillDateSel() {
+  const sel = document.getElementById("dateSel");
+  if (isND()) {
+    sel.innerHTML = '<option value="' + ALL_DATES_KEY + '">全期間(集計)</option>' +
+      ndData.dates.map(d => '<option value="' + d.base_date + '">' +
+        d.base_date + "の夜 → " + d.next_date + "</option>").join("");
+    sel.value = ndDate;
+  } else {
+    sel.innerHTML = allDates.map(d => '<option value="' + d + '">' + d + "</option>").join("");
+    sel.value = rankDate;
+  }
+}
+
+function updateChrome() {
+  const nd = isND();
+  document.getElementById("secFilterBox").style.display = nd ? "" : "none";
+  const ex = document.getElementById("explain");
+  ex.style.display = nd ? "" : "none";
+  if (nd) {
+    ex.innerHTML =
+      "<b>この表の見かた</b> — 夜間PTSは<b>空売りができない</b>ため需給が買いに偏り、翌日の場中より高くなりやすいのでは、という仮説の検証用です。" +
+      "前営業日に両建て(現物買い+信用売り)を作っておき、夜間PTSで現物だけを売れば、実質的にPTS価格でのショートになります。<br>" +
+      '各「差」は <span class="k">PTS価格 − 翌日の値</span> で、<b>プラスならPTSのほうが高かった</b>ことを意味します。' +
+      'とくに <span class="k">高値との差がプラス</span> なら、翌日は一日を通じてPTS価格を一度も上回らなかった、' +
+      "つまり<b>どのタイミングで買い戻しても利益になった</b>ケースです。" +
+      (view().marginOnly
+        ? "<br>このタブは<b>貸借銘柄のみ</b>に絞っています(制度信用で確実に空売りできるのは貸借銘柄だけのため)。"
+        : "<br>このタブは<b>全銘柄</b>です。制度信用で空売りできるのは貸借銘柄だけなので、実際に組めるのは隣のタブのほうです。");
+  }
+  document.getElementById("hint").textContent = nd
+    ? "列見出しをクリックで並び替え。既定では市場・翌日始値・翌日安値・始値との差・安値との差の列は非表示です。翌営業日が未到来の日付は集計に含まれません。"
+    : "列見出しをクリックで並び替え(もう一度クリックで昇順/降順切替)。「変動」= 前回保存分からの順位変動。既定では変動・前回順位・更新時刻・PER・PBRの列は非表示です。";
+  if (nd) document.getElementById("hint").textContent +=
+    " 日中PTSしか記録できていない日は集計から除いています。";
+}
+
+function applyView() {
   buildTabs();
-  const sec = payload.sections[section] || { stocks: [] };
-  all = sec.stocks;
-  const asof = sec.as_of ? sec.as_of + " 時点" : payload.date;
-  setBanner("保存データ: <b>" + asof + "</b> / 比較対象: <b>" +
-    (payload.prev_date || "なし(初回)") + "</b>" +
-    warnHtml(payload.date, false) + warnHtml(payload.prev_date, true));
-  render();
+  updateChrome();
+  fillDateSel();
+  if (isND()) {
+    all = ndRowsFor(ndDate, view().marginOnly);
+    if (!ND_COLS.some(c => c.key === sortKey)) { sortKey = "dhp"; sortAsc = false; }
+    render();
+  } else {
+    const sec = payload.sections[view().sec] || { stocks: [] };
+    all = sec.stocks;
+    const asof = sec.as_of ? sec.as_of + " 時点" : payload.date;
+    setBanner("保存データ: <b>" + asof + "</b> / 比較対象: <b>" +
+      (payload.prev_date || "なし(初回)") + "</b>" +
+      warnHtml(payload.date, false) + warnHtml(payload.prev_date, true));
+    if (!COLS.some(c => c.key === sortKey)) { sortKey = "rank"; sortAsc = true; }
+    render();
+  }
+}
+
+async function switchView(key) {
+  const prev = viewKey;
+  viewKey = key;
+  try {
+    if (isND()) {
+      if (!ndData) {
+        setBanner("翌日データを読み込み中…");
+        await ensureNdData();
+      }
+      if (ndDate !== ALL_DATES_KEY && !ndDates.includes(ndDate)) ndDate = ALL_DATES_KEY;
+      sortKey = "dhp"; sortAsc = false;
+    } else if (VIEWS.find(v => v.key === prev).kind === "nextday") {
+      sortKey = "rank"; sortAsc = true;
+    }
+    applyView();
+  } catch (e) {
+    viewKey = prev;
+    setBanner('<span class="warn">⚠ 翌日データの読み込みに失敗しました: ' + e + "</span>");
+  }
 }
 
 async function loadDate(d) {
   const res = await fetch("data/" + d + ".json", { cache: "no-cache" });
   const raw = await res.json();
+  rankDate = d;
   payload = {
     date: raw.date, prev_date: raw.prev_date,
-    sections: Object.fromEntries(SECTIONS.map(sec =>
-      [sec.key, { as_of: (raw.as_of || {})[sec.key], stocks: raw.sections[sec.key] }])),
+    sections: Object.fromEntries(VIEWS.filter(v => v.kind === "rank").map(v =>
+      [v.sec, { as_of: (raw.as_of || {})[v.sec], stocks: raw.sections[v.sec] }])),
   };
-  applySection();
+  applyView();
 }
 
 async function init() {
@@ -374,9 +693,13 @@ async function init() {
   const res = await fetch("data/index.json", { cache: "no-cache" });
   const idx = await res.json();
   allDates = idx.dates;
-  const sel = document.getElementById("dateSel");
-  sel.innerHTML = allDates.map(d => '<option value="' + d + '">' + d + "</option>").join("");
-  sel.onchange = () => loadDate(sel.value);
+  rankDate = allDates[0];
+
+  document.getElementById("dateSel").onchange = e => {
+    if (isND()) { ndDate = e.target.value; applyView(); }
+    else { loadDate(e.target.value); }
+  };
+  document.getElementById("secFilter").onchange = render;
   document.getElementById("q").oninput = render;
   document.getElementById("colsToggleBtn").onclick = e => {
     showAllCols = !showAllCols;
@@ -388,12 +711,13 @@ async function init() {
   window.addEventListener("resize", () => {
     if (isMobile() !== mobileMatch) { mobileMatch = isMobile(); render(); }
   });
+
   if (allDates.length) await loadDate(allDates[0]);
-  else document.getElementById("body").innerHTML = '<tr><td class="loading" colspan="14">データがありません</td></tr>';
+  else document.getElementById("body").innerHTML = '<tr><td class="loading" colspan="20">データがありません</td></tr>';
 }
 init().catch(e => {
   document.getElementById("body").innerHTML =
-    '<tr><td class="loading" colspan="14">読み込みエラー: ' + e + "</td></tr>";
+    '<tr><td class="loading" colspan="20">読み込みエラー: ' + e + "</td></tr>";
 });
 </script>
 </body>
