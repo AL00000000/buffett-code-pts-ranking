@@ -356,9 +356,9 @@
    "market_cap": "8,075億円",
    "per": "29.0倍",
    "pbr": "5.9倍",
-   "move": "NEW",
-   "prev_rank": "",
-   "move_num": null
+   "move": "↓16",
+   "prev_rank": 4,
+   "move_num": -16
   },
   {
    "rank": "21",
@@ -700,9 +700,9 @@
    "market_cap": "64億円",
    "per": "12.8倍",
    "pbr": "1.7倍",
-   "move": "↑16",
-   "prev_rank": 25,
-   "move_num": 16
+   "move": "NEW",
+   "prev_rank": "",
+   "move_num": null
   },
   {
    "rank": "10",
@@ -718,9 +718,9 @@
    "market_cap": "101億円",
    "per": "-",
    "pbr": "24.0倍",
-   "move": "NEW",
-   "prev_rank": "",
-   "move_num": null
+   "move": "↓7",
+   "prev_rank": 3,
+   "move_num": -7
   },
   {
    "rank": "11",
@@ -772,9 +772,9 @@
    "market_cap": "11億円",
    "per": "26.4倍",
    "pbr": "-",
-   "move": "NEW",
-   "prev_rank": "",
-   "move_num": null
+   "move": "↓7",
+   "prev_rank": 6,
+   "move_num": -7
   },
   {
    "rank": "14",
